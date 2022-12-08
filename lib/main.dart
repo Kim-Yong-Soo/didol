@@ -14,7 +14,6 @@ import 'package:table_calendar/table_calendar.dart';
 
 DBHelper? dbHelper;
 late int leng;
-late String? inputImageString;
 
 void main() {
   dbHelper = DBHelper();
@@ -46,22 +45,118 @@ class MyStateWid extends State<MyStatefulWid> {
   Dialog? storeDialog;
   String? inputData = "";
   String? inputEmotion;
+  File? inputImage;
+  List<Color> emotionColors = List.filled(7, Colors.white);
+  int? image_icon;
+
+  TextEditingController controller = TextEditingController();
+
+  DateTime selectedDay = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day,
+  );
+
+  DateTime focusedDay = DateTime.now();
+
+  Future<File?> _getImage() async {
+    var image = await ImagePicker()
+        .pickImage(source: ImageSource.gallery, imageQuality: 60);
+    return File(image!.path);
+  }
+
+  int getIndex() {
+    int tmp = 0;
+    switch (inputEmotion) {
+      case "행복":
+        tmp = 0;
+        break;
+      case "슬픔":
+        tmp = 1;
+        break;
+      case "분노":
+        tmp = 2;
+        break;
+      case "놀람":
+        tmp = 3;
+        break;
+      case "공포":
+        tmp = 4;
+        break;
+      case "혐오":
+        tmp = 5;
+        break;
+      case "중립":
+        tmp = 6;
+        break;
+    }
+    return tmp;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    image_icon = 0xe048;
+  }
 
   @override
   Widget build(BuildContext context) {
     return DraggableHome(
       title: const Text("디돌"),
       actions: [
-        IconButton(onPressed: () {}, icon: const Icon(Icons.settings)),
+        IconButton(
+            onPressed: () {
+              // dbHelper?.deleteAllDialogs();
+            },
+            icon: const Icon(Icons.settings)),
       ],
-      headerExpandedHeight: 0.5,
-      headerWidget: headerWidget(context),
+      headerExpandedHeight: 0.55,
+      headerWidget: Expanded(
+        child: Container(
+          color: Colors.blue,
+          child: Column(
+            children: [
+              Card(
+                margin: const EdgeInsets.only(left: 16, right: 16, top: 48),
+                elevation: 5.0,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(10),
+                  ),
+                  side: BorderSide(color: Colors.lightBlueAccent, width: 2.0),
+                ),
+                child: TableCalendar(
+                  firstDay: DateTime.utc(2021, 10, 16),
+                  lastDay: DateTime.utc(2030, 3, 14),
+                  focusedDay: focusedDay,
+                  locale: 'ko-KR',
+                  headerStyle: const HeaderStyle(
+                      titleCentered: true,
+                      formatButtonVisible: false,
+                      titleTextStyle: TextStyle(
+                        fontSize: 20,
+                      )),
+                  onDaySelected: (selectedDay, focusedDay) {
+                    setState(() {
+                      this.selectedDay = selectedDay;
+                    });
+                  },
+                  selectedDayPredicate: (day) {
+                    return isSameDay(selectedDay, day);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       fullyStretchable: false,
       backgroundColor: Colors.white,
       appBarColor: Colors.blueAccent,
       body: [
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding:
+              const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 16),
           child: Card(
             shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.all(
@@ -77,7 +172,8 @@ class MyStateWid extends State<MyStatefulWid> {
                 },
                 decoration: const InputDecoration(
                     labelText: "오늘 하루 어떠셨나요?", border: InputBorder.none),
-                maxLines: 5,
+                maxLines: 4,
+                controller: controller,
               ),
             ),
           ),
@@ -99,17 +195,28 @@ class MyStateWid extends State<MyStatefulWid> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(100),
                       onTap: () {
-                        _getImage();
+                        _getImage().then((value) {
+                          setState(() {
+                            if (inputImage != null) {
+                              image_icon = 0xe156; // check
+                            } else {
+                              image_icon = 0xe048; // add_a_photo
+                            }
+                            inputImage = value;
+                          });
+                        });
                       },
                       child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: (storeDialog == null)
-                              ? const Icon(
-                                  Icons.add_a_photo,
+                              ? Icon(
+                                  IconData(image_icon!,
+                                      fontFamily: 'MaterialIcons'),
                                   color: Colors.lightBlueAccent,
                                 )
-                              : const Icon(
-                                  Icons.check,
+                              : Icon(
+                                  IconData(image_icon!,
+                                      fontFamily: 'MaterialIcons'),
                                   color: Colors.lightBlueAccent,
                                 )),
                     ),
@@ -124,9 +231,10 @@ class MyStateWid extends State<MyStatefulWid> {
                       Material(
                         type: MaterialType.transparency,
                         child: Padding(
-                          padding: const EdgeInsets.only(left: 8, right: 8),
+                          padding: const EdgeInsets.only(left: 6, right: 6),
                           child: Ink(
                             decoration: BoxDecoration(
+                              color: emotionColors[0],
                               border: Border.all(
                                   color: Colors.lightBlueAccent, width: 1),
                               borderRadius: BorderRadius.circular(50),
@@ -135,7 +243,13 @@ class MyStateWid extends State<MyStatefulWid> {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(100),
                               onTap: () {
-                                inputEmotion = "행복";
+                                setState(() {
+                                  if (inputEmotion != null) {
+                                    emotionColors[getIndex()] = Colors.white;
+                                  }
+                                  inputEmotion = "행복";
+                                  emotionColors[getIndex()] = Colors.blue;
+                                });
                               },
                               child: const Padding(
                                 padding: EdgeInsets.all(12),
@@ -148,9 +262,10 @@ class MyStateWid extends State<MyStatefulWid> {
                       Material(
                         type: MaterialType.transparency,
                         child: Padding(
-                          padding: const EdgeInsets.only(left: 8, right: 8),
+                          padding: const EdgeInsets.only(left: 6, right: 6),
                           child: Ink(
                             decoration: BoxDecoration(
+                              color: emotionColors[1],
                               border: Border.all(
                                   color: Colors.lightBlueAccent, width: 1),
                               borderRadius: BorderRadius.circular(50),
@@ -159,7 +274,13 @@ class MyStateWid extends State<MyStatefulWid> {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(100),
                               onTap: () {
-                                inputEmotion = "슬픔";
+                                setState(() {
+                                  if (inputEmotion != null) {
+                                    emotionColors[getIndex()] = Colors.white;
+                                  }
+                                  inputEmotion = "슬픔";
+                                  emotionColors[getIndex()] = Colors.blue;
+                                });
                               },
                               child: const Padding(
                                 padding: EdgeInsets.all(12),
@@ -172,9 +293,10 @@ class MyStateWid extends State<MyStatefulWid> {
                       Material(
                         type: MaterialType.transparency,
                         child: Padding(
-                          padding: const EdgeInsets.only(left: 8, right: 8),
+                          padding: const EdgeInsets.only(left: 6, right: 6),
                           child: Ink(
                             decoration: BoxDecoration(
+                              color: emotionColors[2],
                               border: Border.all(
                                   color: Colors.lightBlueAccent, width: 1),
                               borderRadius: BorderRadius.circular(50),
@@ -183,7 +305,13 @@ class MyStateWid extends State<MyStatefulWid> {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(100),
                               onTap: () {
-                                inputEmotion = "분노";
+                                setState(() {
+                                  if (inputEmotion != null) {
+                                    emotionColors[getIndex()] = Colors.white;
+                                  }
+                                  inputEmotion = "분노";
+                                  emotionColors[getIndex()] = Colors.blue;
+                                });
                               },
                               child: const Padding(
                                 padding: EdgeInsets.all(12),
@@ -196,9 +324,10 @@ class MyStateWid extends State<MyStatefulWid> {
                       Material(
                         type: MaterialType.transparency,
                         child: Padding(
-                          padding: const EdgeInsets.only(left: 8, right: 8),
+                          padding: const EdgeInsets.only(left: 6, right: 6),
                           child: Ink(
                             decoration: BoxDecoration(
+                              color: emotionColors[3],
                               border: Border.all(
                                   color: Colors.lightBlueAccent, width: 1),
                               borderRadius: BorderRadius.circular(50),
@@ -207,7 +336,13 @@ class MyStateWid extends State<MyStatefulWid> {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(100),
                               onTap: () {
-                                inputEmotion = "놀람";
+                                setState(() {
+                                  if (inputEmotion != null) {
+                                    emotionColors[getIndex()] = Colors.white;
+                                  }
+                                  inputEmotion = "놀람";
+                                  emotionColors[getIndex()] = Colors.blue;
+                                });
                               },
                               child: const Padding(
                                 padding: EdgeInsets.all(12),
@@ -220,9 +355,10 @@ class MyStateWid extends State<MyStatefulWid> {
                       Material(
                         type: MaterialType.transparency,
                         child: Padding(
-                          padding: const EdgeInsets.only(left: 8, right: 8),
+                          padding: const EdgeInsets.only(left: 6, right: 6),
                           child: Ink(
                             decoration: BoxDecoration(
+                              color: emotionColors[4],
                               border: Border.all(
                                   color: Colors.lightBlueAccent, width: 1),
                               borderRadius: BorderRadius.circular(50),
@@ -231,7 +367,13 @@ class MyStateWid extends State<MyStatefulWid> {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(100),
                               onTap: () {
-                                inputEmotion = "공포";
+                                setState(() {
+                                  if (inputEmotion != null) {
+                                    emotionColors[getIndex()] = Colors.white;
+                                  }
+                                  inputEmotion = "공포";
+                                  emotionColors[getIndex()] = Colors.blue;
+                                });
                               },
                               child: const Padding(
                                 padding: EdgeInsets.all(12),
@@ -244,9 +386,10 @@ class MyStateWid extends State<MyStatefulWid> {
                       Material(
                         type: MaterialType.transparency,
                         child: Padding(
-                          padding: const EdgeInsets.only(left: 8, right: 8),
+                          padding: const EdgeInsets.only(left: 6, right: 6),
                           child: Ink(
                             decoration: BoxDecoration(
+                              color: emotionColors[5],
                               border: Border.all(
                                   color: Colors.lightBlueAccent, width: 1),
                               borderRadius: BorderRadius.circular(50),
@@ -255,7 +398,13 @@ class MyStateWid extends State<MyStatefulWid> {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(100),
                               onTap: () {
-                                inputEmotion = "혐오";
+                                setState(() {
+                                  if (inputEmotion != null) {
+                                    emotionColors[getIndex()] = Colors.white;
+                                  }
+                                  inputEmotion = "혐오";
+                                  emotionColors[getIndex()] = Colors.blue;
+                                });
                               },
                               child: const Padding(
                                 padding: EdgeInsets.all(12),
@@ -268,9 +417,10 @@ class MyStateWid extends State<MyStatefulWid> {
                       Material(
                         type: MaterialType.transparency,
                         child: Padding(
-                          padding: const EdgeInsets.only(left: 8, right: 8),
+                          padding: const EdgeInsets.only(left: 6, right: 6),
                           child: Ink(
                             decoration: BoxDecoration(
+                              color: emotionColors[6],
                               border: Border.all(
                                   color: Colors.lightBlueAccent, width: 1),
                               borderRadius: BorderRadius.circular(50),
@@ -279,7 +429,13 @@ class MyStateWid extends State<MyStatefulWid> {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(100),
                               onTap: () {
-                                inputEmotion = "중립";
+                                setState(() {
+                                  if (inputEmotion != null) {
+                                    emotionColors[getIndex()] = Colors.white;
+                                  }
+                                  inputEmotion = "중립";
+                                  emotionColors[getIndex()] = Colors.blue;
+                                });
                               },
                               child: const Padding(
                                 padding: EdgeInsets.all(12),
@@ -309,23 +465,81 @@ class MyStateWid extends State<MyStatefulWid> {
                   borderRadius: BorderRadius.circular(50),
                 ),
                 width: MediaQuery.of(context).size.width - 32,
-                height: MediaQuery.of(context).size.height * 0.05,
+                height: 48,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(100),
                   onTap: () {
-                    leng += 1;
-                    storeDialog = Dialog(
-                        leng,
-                        DateFormat('yyyy-MM-dd').format(DateTime.now()),
-                        inputData,
-                        inputEmotion,
-                        inputImageString);
-                    Logger().d("$storeDialog");
-                    dbHelper!.createData(storeDialog!);
-                    storeDialog = null;
-                    inputData = "";
-                    inputImageString = null;
-                    // 첫 입력만 받아들여지는 문제 해결하기
+                    if (inputImage == null ||
+                        inputEmotion == null ||
+                        inputData == null) {
+                      // Logger().d("inputImage:${inputImage}, inputEmotion:${inputEmotion}, inputData:${inputData}");
+                      showDialog(
+                          context: context,
+                          builder: (ctx) {
+                            return AlertDialog(
+                              content: const Text(
+                                  "필수 입력 요소가 덜 입력됐습니다.\n다시 입력부탁드립니다.\n(현재 서버와의 연결이 불가합니다.\n 감정도 선택 부탁드립니다.)"),
+                              actions: [
+                                TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: const Text("확인")),
+                              ],
+                            );
+                          });
+                    } else {
+                      showDialog(
+                          context: context,
+                          builder: (ctx) {
+                            return AlertDialog(
+                              content: Expanded(
+                                flex: 1,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text("저장할까요?", style: TextStyle(fontSize: 24),),
+                                    Image.file(inputImage!),
+                                    Text(DateFormat('yyyy-MM-dd')
+                                        .format(selectedDay)),
+                                    Text(inputData!),
+                                  ],
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    leng += 1;
+                                    storeDialog = Dialog(
+                                        leng,
+                                        DateFormat('yyyy-MM-dd')
+                                            .format(selectedDay),
+                                        inputData,
+                                        inputEmotion,
+                                        Utility.base64String(
+                                            inputImage!.readAsBytesSync()));
+                                    Logger().d("$storeDialog");
+                                    dbHelper!.createData(storeDialog!);
+                                    emotionColors[getIndex()] = Colors.white;
+                                    image_icon = 0xe048;
+                                    storeDialog = null;
+                                    inputEmotion = null;
+                                    inputData = "";
+                                    inputImage = null;
+                                    controller.text = "";
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: const Text("확인"),
+                                ),
+                                TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: const Text("취소")),
+                              ],
+                            );
+                          });
+                    }
                   },
                   child: const Padding(
                     padding: EdgeInsets.all(12),
@@ -366,54 +580,12 @@ class MyStateWid extends State<MyStatefulWid> {
   }
 }
 
-Widget headerWidget(BuildContext context) {
-  return Container(
-    color: Colors.blue,
-    child: Column(
-      children: [
-        Card(
-          margin: const EdgeInsets.only(left: 16, right: 16, top: 48),
-          elevation: 5.0,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(
-              Radius.circular(10),
-            ),
-            side: BorderSide(color: Colors.lightBlueAccent, width: 2.0),
-          ),
-          child: TableCalendar(
-            firstDay: DateTime.utc(2021, 10, 16),
-            lastDay: DateTime.utc(2030, 3, 14),
-            focusedDay: DateTime.now(),
-            locale: 'ko-KR',
-            headerStyle: const HeaderStyle(
-                titleCentered: true,
-                formatButtonVisible: false,
-                titleTextStyle: TextStyle(
-                  fontSize: 20,
-                )),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class EmotionDays extends StatefulWidget {
+class EmotionDays extends StatelessWidget {
   final String emotionText;
   final Future<List<Dialog>?> dialogs;
 
   const EmotionDays(
       {super.key, required this.emotionText, required this.dialogs});
-
-  @override
-  State<StatefulWidget> createState() => _EmotionDays(emotionText, dialogs);
-}
-
-class _EmotionDays extends State<EmotionDays> {
-  late String emotionText;
-  late Future<List<Dialog>?> dialogs;
-
-  _EmotionDays(this.emotionText, this.dialogs);
 
   @override
   Widget build(BuildContext context) {
@@ -443,33 +615,65 @@ class _EmotionDays extends State<EmotionDays> {
                           children: [
                             Expanded(
                               child: GridView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: 1,
-                                          childAspectRatio: 2 / 2,
-                                          crossAxisSpacing: 12,
-                                          mainAxisSpacing: 12),
-                                  itemCount: snapshot.data?.length,
-                                  itemBuilder: (context, index) => Card(
-                                        margin: const EdgeInsets.all(8),
-                                        elevation: 8,
-                                        child: GridTile(
-                                          footer: GridTileBar(
-                                            backgroundColor: Colors.black38,
-                                            title: Text(snapshot
-                                                .data![index].date
-                                                .toString()),
-                                            subtitle: Text(index.toString()),
-                                          ),
-                                          child: Center(
-                                            child:
-                                                Utility.imageFromBase64String(
-                                                    snapshot
-                                                        .data![index].image!),
-                                          ),
-                                        ),
-                                      )),
+                                scrollDirection: Axis.horizontal,
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 1,
+                                        childAspectRatio: 2 / 2,
+                                        crossAxisSpacing: 12,
+                                        mainAxisSpacing: 12),
+                                itemCount: snapshot.data?.length,
+                                itemBuilder: (context, index) => InkWell(
+                                  onTap: () {
+                                    showDialog(
+                                        context: context,
+                                        builder: (ctx) {
+                                          return AlertDialog(
+                                            content: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Expanded(
+                                                    child: Utility
+                                                        .imageFromBase64String(
+                                                            snapshot
+                                                                .data![index]
+                                                                .image!)),
+                                                Padding(
+                                                    padding: EdgeInsets.only(
+                                                        top: 2)),
+                                                Text(snapshot
+                                                    .data![index].date!),
+                                                Text(snapshot
+                                                    .data![index].content!),
+                                              ],
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                  onPressed: () {
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                  child: Text("닫기")),
+                                            ],
+                                          );
+                                        });
+                                  },
+                                  child: Card(
+                                    margin: const EdgeInsets.all(8),
+                                    elevation: 8,
+                                    child: GridTile(
+                                      footer: GridTileBar(
+                                        backgroundColor: Colors.black38,
+                                        title: Text(snapshot.data![index].date
+                                            .toString()),
+                                      ),
+                                      child: Center(
+                                        child: Utility.imageFromBase64String(
+                                            snapshot.data![index].image!),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -481,13 +685,6 @@ class _EmotionDays extends State<EmotionDays> {
       },
     );
   }
-}
-
-Future _getImage() async {
-  ImagePicker().pickImage(source: ImageSource.gallery).then((imgFile) {
-    inputImageString =
-        Utility.base64String(File(imgFile!.path).readAsBytesSync());
-  });
 }
 
 class Dialog {
@@ -523,6 +720,17 @@ class Dialog {
   void setImage(String image) {
     this.image = image;
   }
+
+  DateTime? getDateTypeDateTime() {
+    return DateTime.tryParse(date!);
+  }
+}
+
+class DialogForCalendar {
+  int? id;
+  String? content, emotion, image;
+
+  DialogForCalendar(this.id, this.content, this.emotion, this.image);
 }
 
 const String tableName = 'Dialog';
@@ -586,7 +794,7 @@ class DBHelper {
 
     final List<Map<String, dynamic>> maps = await db.query(tableName);
     leng = maps.length;
-    Logger().d("getAllDialog : ${maps.length}");
+    Logger().d("getAllDialog : ${maps.length}, ${maps[0]['date'].runtimeType}");
 
     return List.generate(maps.length, (i) {
       return Dialog(maps[i]['id'], maps[i]['date'], maps[i]['content'],
@@ -594,12 +802,31 @@ class DBHelper {
     });
   }
 
+  // Read All and return date mainly
+  // Future<Map<DateTime, DialogForCalendar>> getMapDateAllDialog() async {
+  //   final db = await database;
+  //   dbHelper?.deleteAllDialogs();
+  //
+  //   final List<Map<String, dynamic>> maps = await db.query(tableName);
+  //   leng = maps.length;
+  //   Logger().d("getAllDialog : ${maps.length}");
+  //
+  //   Map<DateTime, List<DialogForCalendar>> dialogs = {};
+  //
+  //   for (int i = 0; i < maps.length; i++) {
+  //     dialogs[DateTime.tryParse(maps[i]['date'])!] = DialogForCalendar(maps[i]['id'], maps[i]['content'],
+  //         maps[i]['emotion'], maps[i]['image']);
+  //   }
+  //
+  //   return dialogs;
+  // }
+
   Future<List<Dialog>?> getEmotionSeletedDialog(String emotion) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = (await db
         .rawQuery('SELECT * FROM $tableName WHERE emotion=?', [emotion]));
-    Logger().d(
-        "id: ${maps[0]['id']}, date: ${maps[0]['date']}, content: ${maps[0]['content']}, emotion: ${maps[0]['emotion']} image: ${maps[0]['image']}");
+    // Logger().d(
+    //     "id: ${maps[0]['id']}, date: ${maps[0]['date']}, content: ${maps[0]['content']}, emotion: ${maps[0]['emotion']} image: ${maps[0]['image']}");
 
     if (maps.isEmpty) {
       return null;
